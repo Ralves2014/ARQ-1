@@ -1,0 +1,12 @@
+addi t0,zero,2
+srli t1,t0,24
+slli t2,t0,24
+srli t3,t0,16
+andi t3,t3,0xff
+slli t3,t3,8
+srli t4,t0,8
+andi t4,t4,0xff
+slli t4,t4,16
+or t0,t1,t2
+or t0,t0,t3
+or t0,t0,t4
