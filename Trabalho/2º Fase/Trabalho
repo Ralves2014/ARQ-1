@@ -1,0 +1,751 @@
+.globl main
+.data 
+
+l:	.string ".\n"
+cif:	.string "$"
+pt:	.string "%p\n"
+i:	.string "i\n"
+i1:	.string "i"
+a:	.string "a\n"
+c:	.string "c\n"
+c1:	.string "c"
+d:	.string "d\n"
+p:	.string "p\n"
+w:	.string "w\n"
+Q:	.string "Q\n"
+q:	.string "q\n"
+f:	.string "f\n"
+e:	.string "e\n"
+cifrao:	.string "$a\n"
+
+ficheiro:	.word 1		#Verificar se guardou os dados no ficheiro
+string:	 	.space 100	#frase inserida pelo utilizador
+palavra:	.space 100
+#ll:		.string "."
+enter:		.string "\n"
+virgula:	.string","
+
+Array:		.string "ola", "adeus", "aqui"
+File_name:	.space 100
+
+buffer:		.space 100
+#Para testes
+#str:	.string"cheguei a append\n"
+#str2:	.string"cheguei a insert\n"
+#str3:	.string"cheguei a change\n"
+#str4:	.string"cheguei a delete\n"
+#str5:	.string"cheguei a print\n"
+#str6:	.string"cheguei a write\n"
+
+
+
+
+.text
+
+#Funções auxiliares
+
+#a função check serve para averiguar quando é introduzido um ponto final
+check:			
+	addi t0, a0, 0
+	lbu t1, 0(t0)
+	lbu a1, 0(a1)
+	addi a0, zero, 0
+	bne t1, a1, ENDc
+	addi a0, zero, 1
+ENDc:
+	ret
+############################################3
+finalf:	#função que encontra o final
+	lbu t0, 0(a0)
+	li t1, 0
+	beqz t0, Salto1
+	addi t1, t1, 1
+	addi a0, a0, 1
+	j finalf
+Salto1:
+	addi a0, a0, 1
+	lbu t0, 0(a0)
+	beqz t0, Salto2
+	addi t1, t1, 1
+	j finalf
+Salto2:
+	add a0, a0, t1
+	ret
+##################################################	
+#obtem uma string da consola
+gets:			
+	li a7,8
+	ecall
+	ret
+###################################################	
+#printstring
+puts:
+	li a7,4
+	ecall
+	ret
+	
+##################################################################################
+#a função caracter serve para reconhecer o comando introduzido pelo utilizador	
+caracter:		
+    	lbu t0, 0(a0)
+    	beqz t0, L1
+    	lbu t1, 0(a1)
+    	beqz t1, L1
+Ciclo:
+    	bne t0, t1, L1
+    	addi a0, a0, 1
+    	addi a1, a1, 1
+    	lbu t0, 0(a0)
+    	lbu t1, 0(a1)
+    	beqz t0, L2
+    	j Ciclo
+
+L2:
+    	bnez t1,L1
+    	addi a0, zero, 1
+    	j END 
+L1:
+    	li a0, 0
+    	
+    	
+END:	ret
+
+
+
+############################
+#Comandos do editor de texto
+
+file:
+	la a0, File_name
+	li a1, 100
+	jal gets
+	ret
+    	
+#########################
+#função que indica a endereço da posição atual a partir dum numero
+numero:
+	mv t2, a0
+	li t1, 1
+	la a0, Array
+begin:	
+	lbu t0, 0(a0)
+	beqz t0,J1
+	bne t1, t2, dif
+	ret
+dif:	
+	addi a0, a0, 1
+	j begin
+J1:	
+	addi t1, t1, 1
+	bne t1, t2, cc
+	ret
+cc:
+	addi a0, a0, 1
+	lbu t0, 0(a0)
+	beqz t0,J2
+	addi a0, a0, -1
+	j dif	
+
+J2:
+	la a0, Array
+	ret
+#################################
+
+tamanho:
+
+	li t1, 0
+salt:
+	lbu t0, 0(a0)
+	beqz t0, fiiim
+	addi t1, t1, 1
+	addi a0, a0, 1
+	j salt
+fiiim:
+	mv a0, t1
+	ret
+
+##################################################
+
+append:	
+	
+	# a0 endereço do array, a1=d(endereço atual), a2=final
+
+	addi sp, sp, -16
+	sw ra, 12(sp)
+	sw s0, 8(sp)
+	sw a0, 4(sp)
+	sw a1, 0(sp)
+	
+While:	
+	la a0, string
+	li a1, 100
+	jal gets
+	mv s0, a0
+	
+	la a1, l
+	jal check
+	
+	bne a0, zero, fima		#fima-> fim função append
+	#add t0, a2, zero		# t0=i=final
+	
+	
+	lw a1, 0(sp)			#valor original de a1=d
+	lw a0, 4(sp)			# endereço do array 
+	add a1, a0, a1			#endereço onde queremos inserir
+for:
+	la a0, string
+	jal tamanho
+	mv t3, a0			#t3-> tamano da string inserida
+	
+	lw a0, 4(sp)	
+	jal finalf
+
+deslocar:				#a0 passa a ser enderco final
+	mv t5, a0 
+	lbu t4, 0(t5)
+	add t5, t5, t3
+	sb t4, 0(t5)
+	addi a0, a0, -1
+	blt a1, a0, deslocar			#se o endereço a1 é menor que o endereço a0 
+	
+guardar:
+	
+	la a0, string
+	lbu t6, 0(a0)
+	beqz t6, guardado
+	sb t6, 0(a1)
+	addi a1, a1, 1
+	j guardar
+	
+guardado:	
+	sw a1, 0(sp)
+	j While
+
+fima:
+	mv a0, a1
+	lw s0, 8(sp)
+	lw ra, 12(sp)
+	addi sp, sp, 16
+	ret
+#############################################################	
+	
+insert:	
+# a0 endereço do array, a1=d(posição atual), a2=final
+
+	addi sp, sp, -16
+	sw ra, 12(sp)
+	sw s0, 8(sp)
+	sw a0, 4(sp)
+	sw a1, 0(sp)
+	
+While1:	
+	la a0, string
+	li a1, 100
+	jal gets
+	mv s0, a0
+	
+	la a1, l
+	jal check
+	
+	bne a0, zero, fimi		#fimi-> fim funçãi insert
+	#add t0, a2, zero		# t0=i=final
+	
+	
+	lw a1, 0(sp)			#valor original de a1=d
+	lw a0, 4(sp)			# endereço do array 
+	add a1, a0, a1			#endereço onde queremos inserir
+for1:
+	la a0, string
+	jal tamanho
+	mv t3, a0			#t3-> tamano da string inserida
+	
+	lw a0, 4(sp)	
+	jal finalf
+
+deslocar1:				#a0 passa a ser enderco final
+	mv t5, a0 
+	lbu t4, 0(t5)
+	add t5, t5, t3
+	sb t4, 0(t5)
+	addi a0, a0, -1
+	blt a1, a0, deslocar1			#se o endereço a1 é menor que o endereço a0 
+	
+guardar1:
+	
+	la a0, string
+	lbu t6, 0(a0)
+	beqz t6, guardado1
+	sb t6, 0(a1)
+	addi a1, a1, 1
+	j guardar1
+	
+guardado1:
+	add a2, a2, t3	#alterar o endereço do final
+	j While1
+
+fimi:
+	mv a0, a2
+	lw s0, 8(sp)
+	lw ra, 12(sp)
+	addi sp, sp, 16
+	ret
+################################################################
+	
+change:	
+	addi sp, sp, -16
+	sw ra, 12(sp)
+	sw a1, 8(sp)
+	sw a0, 4(sp)
+	sw s0, 0(sp)
+	
+	
+	la a0, string
+	li a1, 100
+	jal gets
+	mv s0, a0
+	
+	la a1, l
+	jal check
+	
+	bne a0, zero, fimc		#fimc-> fim da função change
+	#como a posição atual começa com um  \0 entao temos que somar inicialmente 1 para ler o primeiro caracter
+	
+	lw a0, 4(sp)
+	lw a1, 8(sp)	
+	addi t0, zero, 0	#t0 -> contagem do numero de caraceteres da posição atual
+next:
+	addi a1, a1, 1
+	lbu t1, 0(a1)
+	beqz t1, jump
+	addi t0, t0, 1
+	j next
+	
+jump:	
+	mv a0, s0
+	jal tamanho
+	
+	bge t1, a0, pronto
+	sub t3, a0, t0		#t3= a0- t0
+	
+	lw a0, 4(sp)	
+	jal finalf
+	lw a1, 8(sp)
+	
+deslocar2:				#a0 passa a ser enderco final
+	mv t5, a0 
+	lbu t4, 0(t5)
+	add t5, t5, t3
+	sb t4, 0(t5)
+	addi a0, a0, -1
+	blt a1, a0, deslocar2
+	
+pronto:#array pronto para receber a nova string
+	addi a1, a1, 1
+	la a0, string
+repeat:
+	lb t0, 0(a0)				#t0 vai receber os cracteres da string inserido pelo utilizador
+	beqz t0, fimc
+	lb t0, 0(a1)
+	addi a1, a1, 1
+	addi a0, a0, 1
+	j repeat
+fimc:	
+
+	lw s0, 0(sp)
+	lw a0, 4(sp)
+	lw a1, 8(sp)
+	lw ra, 12(sp)
+	addi sp, sp, 16
+	ret
+########################################################
+delete:	
+	addi sp, sp, -16
+	sw ra, 12(sp)
+	sw a1, 8(sp)		#a1-> posição atual
+	sw a0, 4(sp)
+	sw s0, 0(sp)
+	mv s0, a1
+
+	addi t0, zero, 0	#t0 -> contagem do numero de caraceteres da posição atual
+next2:
+	addi a1, a1, 1
+	lbu t1, 0(a1)
+	beqz t1, jump2		#t1=0-> jump
+	addi t0, t0, 1
+	j next2
+	
+jump2:	
+	add s0, s0, t0		#s0=posição atual
+	mv t2, s0
+	sub s0, s0, t0		#s0=s0-t0
+
+again:
+	lbu t3, 0(t2)
+	sb t3, 0(s0)
+	addi t2, t2, 1
+	addi s0, s0, 1
+	beqz t3, verifica
+	j again
+verifica:
+	
+	addi t2, t2, 1
+	addi s0, s0, 1
+	lbu t3, 0(t2)
+	
+	beqz t3, fimd
+	j again
+	
+fimd:	
+
+	lw s0, 0(sp)
+	lw a0, 4(sp)
+	lw a1, 8(sp)
+	lw ra, 12(sp)
+	addi sp, sp, 16
+	ret
+
+#############################################################
+		
+print:	
+	li a7, 4
+	ecall
+	ret
+
+##############################################################
+
+print_total:
+
+	li a7, 4
+	ecall
+for3:	
+	addi a0, a0, 1
+	lbu t0, 0(a0)
+	beqz t0, L
+	j for
+L:	
+	addi a0, a0, 1
+	lbu t0, 0(a0)
+	beqz t0, Fim
+	
+	addi sp, sp, -4
+	sw a0, 0(sp)
+	
+	la a0, enter
+	li a7, 4
+	ecall
+	
+	lw a0, 0(sp)
+	addi sp, sp, 4
+	
+	li a7, 4
+	ecall
+
+	j for3
+Fim:
+	ret
+	
+##########################################################	
+			
+write:	addi sp,sp,-8
+	sw ra, 0(sp)
+	sw a3, 4(a0)
+	
+	li   a7, 1024     # system call for open file
+  	la   a0, File_name     # output file name
+  	li   a1, 1        # Open for writing (flags are 0: read, 1: write)
+  	ecall             # open a file (file descriptor returned in a0)
+  	mv   s6, a0       # save the file descriptor
+  	
+  	li a7,64
+  	ecall
+  	jal puts
+  	
+  	# Close the file
+  	li   a7, 57       # system call for close file
+  	mv   a0, s6       # file descriptor to close
+  	ecall             # close file
+  	
+  	la t0, ficheiro
+  	lw t1, 0(t0)
+  	addi t1, t1, 1
+  	sw t1, 0(t0)
+  	
+  	lw ra, 4(sp)
+  	lw a3, 0(a0)
+	addi sp,sp,8
+	ret
+	
+################################################################	
+	
+	# Write to file just opened
+edit:	addi sp,sp,-8
+	sw ra, 0(sp)
+	sw a3, 4(a0)
+	
+  	li   a7, 64       # system call for write to file
+  	mv   a0, s6       # file descriptor
+  	la   a1, buffer   # address of buffer from which to write
+  	li   a2, 44       # hardcoded buffer length
+  	ecall             # write to file
+  	
+  	lw ra, 4(sp)
+  	lw a3, 0(a0)
+	addi sp,sp,8
+	ret
+  	
+#######################################################
+
+quit:
+	li t0, 1
+	la t1, ficheiro
+  	lw t2, 0(t1)
+	beq t0, t2, nao
+	li a7,10
+	ecall
+	ret
+nao:
+	ret	
+
+######################################################
+
+QUIT:	li a7,10		#para o ciclo (Quit)
+	ecall
+	ret		
+##########################################################
+main:
+	la a0, Array
+	jal finalf
+	mv s2, a0		#posição final
+	la s1, Array		#posição atual
+	
+	
+I:	
+	
+	
+	la a0,palavra		#guarda o endereço da letra 
+	li a1,100		#tamanho 
+	jal gets		#recebe a letra
+	
+	
+	addi sp,sp,-4		#pilha
+	sw a0,0(sp)		#store word de a0(endereço da letra escrita)
+	
+	la a1,cifrao        	#$a
+    	jal caracter        	#retorna 0 ou 1 
+    	li t0,1        		#variavel auxiliar
+    	bne a0,t0,Lcifra    	#compara, caso forem iguais vai para a função append
+    	la a0, Array
+    	mv a1, s2
+    	mv a2, s2
+    	jal append
+    	mv s1, a0
+    	j I
+Lcifra:
+    	lw a0,0(sp)        	#a0 passa a ser novamente o endereço da letra
+	
+	la a1,a			#append
+	jal caracter		#retorna 0 ou 1 
+	li t0,1			#variavel auxiliar
+	bne a0,t0,L1a		#compara, caso forem iguais vai para a função append
+	la a0, Array
+	mv a1, s1
+	mv a2, s2
+	jal append
+	mv s1, a0
+	j I
+L1a:	
+	lw a0,0(sp)		#a0 passa a ser novamente o endereço da letra
+	
+	la a1,i			#insert
+	jal caracter		#retorna 0 ou 1 
+	li t0,1			#variavel auxiliar
+	bne a0,t0, L1i		#compara, caso forem iguais vai para a função insert
+	la a0, Array
+	mv a1, s1
+	mv a2, s2
+	jal insert
+	mv s2, a0
+	j I
+L1i:	
+	lw a0,0(sp)		#a0 passa a ser novamente o endereço da letra
+	
+	
+	la a1,c			#change
+	jal caracter		#retorna 0 ou 1 
+	li t0,1			#variavel auxiliar
+	bne a0,t0,L1c		#compara, caso forem iguais vai para a função change
+	la a0, Array
+	mv a1, s1
+	jal change
+	j I
+L1c:
+	lw a0,0(sp)		#a0 passa a ser novamente o endereço da letra
+	
+	
+	la a1,d			#delete
+	jal caracter		#retorna 0 ou 1 
+	li t0,1			#variavel auxiliar
+	bne a0,t0,L1d		#compara, caso forem iguais vai para a função delete
+	la a0, Array
+	jal delete
+	mv s1, a0
+	j I
+L1d:
+	lw a0,0(sp)		#a0 passa a ser novamente o endereço da letra
+	
+	
+	la a1,p			#print
+	jal caracter		#retorna 0 ou 1 
+	li t0,1			#variavel auxiliar
+	bne a0,t0,L1p		#compara, caso forem iguais vai para a função print
+	la a0, Array
+	mv a1, s1
+	jal print
+	j I
+L1p:	
+	lw a0,0(sp)		#a0 passa a ser novamente o endereço da letra
+	
+	
+	la a1,w			#write 
+	jal caracter		#retorna 0 ou 1 
+	li t0,1			#variavel auxiliar
+	bne a0,t0,L1w		#comparar se sao iguais
+	la a0, File_name
+	la a1, Array
+	mv a1, s1
+	jal write
+	j I
+
+L1w:	
+	lw a0,0(sp)		#a0 passa a ser novamente o endereço da letra
+				#%p print total
+	la a1, pt
+	jal caracter
+	li t0, 1
+	bne a0, t0, L1pt
+	la a0, Array
+	jal print_total
+	j I
+L1pt:
+	
+	lw a0,0(sp)		#a0 passa a ser novamente o endereço da letra
+				#edit
+	la a1, e		
+	jal caracter
+	li t0, 1
+	bne a0, t0, L1e
+	la a0, File_name
+	jal edit
+	j I
+	
+L1e:	
+		
+	lw a0,0(sp)		#a0 passa a ser novamente o endereço da letra
+	
+				#f name
+	la a1, f			
+	jal caracter
+	li t0, 1
+	bne a0, t0, L1f
+	
+	la a0, File_name
+	jal file
+	j I
+
+L1f:
+	lw a0,0(sp)	
+				#quit
+	la a1, q
+	jal caracter
+	li t0, 1
+	bne a0, t0, L1q
+	
+	la a0, File_name
+	jal quit
+	j I
+	
+L1q:	
+	lw a0,0(sp)		
+	
+	la a1,Q			#Quit
+	jal caracter		#retorna 0 ou 1 
+	li t0,1			#variavel auxiliar
+	bne a0,t0, L1Q		#compara, caso forem iguais vai para a função L
+	jal QUIT
+L1Q:	
+#Parte em que o comando tem tanto algarismos como chars
+	li t5, 0x30		#0
+	li t6, 0x39		#9
+	
+	la t4, palavra
+	lb t0, 0(t4)
+	
+	blt t0, t5, sai
+	blt t6, t0, sai
+	add t3, zero, t0
+	mv a0, t0		#a0= t0, para encontrar a sua posição
+	jal numero		#sai o endereço da posição
+	addi a0, a0, 1		#endereço da primeira posição no array-> posição atual
+	
+	addi t4, t4, 1
+	lb t0, 0(t4)
+	beqz t0, LLL
+	blt t0, t5, L1c1	#Quer dizer que e uma virgula
+	blt t6, t0, let		#let-> quer dizer que e um caracter
+	j LLL
+let:	
+	mv s1, a0		#posição atual updated
+	mv a0, t0
+	mv s3, t0
+	la a1,i1		#numero+i
+	jal caracter
+	li t0,1
+	bne a0,t0, L1i1
+	la a0, Array
+	mv a1, s1
+	mv a2, s2
+	jal insert
+	mv s2, a0
+	j I
+L1i1:
+	mv a0, s3
+	la a1, c1
+	jal caracter
+	li t0, 1
+	bne a0, t0, sai		#numero+c
+	jal change
+	j I
+L1c1:
+	addi t4, t4, 1
+	lb t0, 0(t4)
+	la a3, cif		#a3=endereço da string cif-> "$"
+	lb a0, (a3)
+	bne t0, a0, nd		#nd= comando numero + delete
+	mv a0, s1
+	jal print_total
+	j I
+nd:
+	addi t4, t4, 1
+	lb t0, 0(t4)		#t0=numero
+	mv s6, t0		#s6=t0 -> guarda o numero
+	mv a0, t0
+	jal numero
+	addi a0, a0, 1
+	mv s5, a0		#endereço a ser eleminado
+loop:
+	la a0, Array
+	mv a1, s5 
+	jal delete
+	addi s6, s6, -1
+	bge zero, s6, I
+	mv a0, s6
+	jal numero
+	addi a0, a0, 1
+	mv s5, a0
+	j loop
+		
+LLL:
+	mv s1, a0	
+sai:
+	j I
+		
